@@ -12,19 +12,12 @@ import (
 	"time"
 )
 
-//GET
-//PUT
-//VOTE
-//report
-
-// Block IP for 6 hours
 var blockedIPs []string
 
 /** Prevent brute force. With too many invalid password attempts, admin access is disabled*/
 var remainingLoginTries = 10
 
 func startWebserver() {
-	go clearBlockedIPs()
 	http.HandleFunc("/get", handleGetBarcode)
 	http.HandleFunc("/vote", handleVote)
 	http.HandleFunc("/report", handleReport)
@@ -190,6 +183,8 @@ type ResponseBarcodeFound struct {
 
 func handleAdmin(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "<html><h2>BarcodeServer</h2><br>Total barcodes: "+strconv.Itoa(getTotalBarcodes())+"<br>")
+	fmt.Fprintf(w, "Unique users:: "+strconv.Itoa(len(blockedIPs))+"<br>")
+	fmt.Fprintf(w, "Blocked IPs: "+strconv.Itoa(len(blockedIPs))+"<br><br>")
 	fmt.Fprintf(w, "Total votes: "+strconv.Itoa(getTotalVotes())+"<br>")
 	fmt.Fprintf(w, "Total reports: "+strconv.Itoa(getTotalReports())+"<br><br>")
 	fmt.Fprintf(w, "<h3>Reports</h3>")
@@ -199,13 +194,13 @@ func handleAdmin(w http.ResponseWriter, r *http.Request) {
 	for i := 0; i <= length-1; i = i + 2 {
 		fmt.Fprintf(w, reports[i]+" ("+reports[i+1]+") <a href='#'>Remove barcode</a> <a href='#'>Discard reports</a><br>")
 	}
-}
 
-// Clears blockedIPs array every 6 hours
-func clearBlockedIPs() {
-	for {
-		blockedIPs = []string{}
-		time.Sleep(time.Hour * 6)
+	fmt.Fprintf(w, "<br><h4>Top 25 barcodes</h4><br>")
+
+	topBarcodes := getMostPopularBarcodes()
+	length = len(topBarcodes)
+	for i := 0; i <= length-1; i = i + 2 {
+		fmt.Fprintf(w, topBarcodes[i]+" ("+topBarcodes[i+1]+")<br>")
 	}
 }
 

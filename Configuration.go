@@ -41,10 +41,10 @@ func generateDefaultConfig() {
 	config := Configuration{
 		RedisUrl:      "127.0.0.1:6379",
 		RedisSize:     200,
-		ApiDailyCalls: 150,
+		ApiDailyCalls: 200,
 		AdminUser:     "admin",
 		AdminPassword: "admin",
-		WebserverPort: ":8080",
+		WebserverPort: "127.0.0.1:8080",
 	}
 	fmt.Println("First start, generated initial configuration")
 	saveConfig(config)

@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/mediocregopher/radix/v3"
+	"html/template"
 	"log"
 	"net/http"
 	"strings"
@@ -28,8 +29,8 @@ func logNewRequest(r *http.Request) int {
 func getBarcode(barcode string) []string {
 	var storedBarcodes []string
 
-	_ = redisPool.Do(radix.Cmd(&storedBarcodes, "ZRANGEBYSCORE", "barcode:"+barcode, "-1", "+inf"))
-	_ = redisPool.Do(radix.Cmd(nil, "INCR", "hits:"+barcode))
+	_ = redisPool.Do(radix.Cmd(&storedBarcodes, "ZREVRANGEBYSCORE", "barcode:"+barcode, "+inf", "-1"))
+	_ = redisPool.Do(radix.Cmd(nil, "ZINCRBY", "hits", "1", barcode))
 	return storedBarcodes
 }
 
@@ -69,8 +70,10 @@ func addGrocyBarcodes(barcodes GrocyBarcodes, uuid string) {
 	key := "grocyBarcodes"
 	_ = redisPool.Do(radix.WithConn(key, func(conn radix.Conn) error {
 		for _, barcode := range barcodes.Barcodes {
-			_ = conn.Do(radix.FlatCmd(nil, "ZADD", "barcode:"+barcode.Barcode, "NX", "1", barcode.Name))
-			_ = conn.Do(radix.FlatCmd(nil, "SET", "log:uuid:"+barcode.Barcode+":"+barcode.Name, uuid))
+			barcodeSanitized := template.HTMLEscapeString(barcode.Barcode)
+			nameSanitized := template.HTMLEscapeString(barcode.Name)
+			_ = conn.Do(radix.FlatCmd(nil, "ZADD", "barcode:"+barcodeSanitized, "NX", "1", nameSanitized))
+			_ = conn.Do(radix.FlatCmd(nil, "SET", "log:uuid:"+barcodeSanitized+":"+nameSanitized, uuid))
 		}
 		return nil
 	}))
@@ -96,6 +99,12 @@ func getTotalReports() int {
 
 func getReportList() []string {
 	var result []string
-	_ = redisPool.Do(radix.Cmd(&result, "ZRANGEBYSCORE", "reports", "0", "+inf", "WITHSCORES"))
+	_ = redisPool.Do(radix.Cmd(&result, "ZREVRANGEBYSCORE", "reports", "+inf", "0", "WITHSCORES"))
+	return result
+}
+
+func getMostPopularBarcodes() []string {
+	var result []string
+	_ = redisPool.Do(radix.Cmd(&result, "ZREVRANGEBYSCORE", "hits", "+inf", "1", "WITHSCORES", "LIMIT", "0", "25"))
 	return result
 }
