@@ -57,6 +57,8 @@ func reportName(barcode, name string, r *http.Request) bool {
 	_ = redisPool.Do(radix.Cmd(&score, "ZSCORE", "barcode:"+barcode, name))
 	if score != "" {
 		_ = redisPool.Do(radix.Cmd(nil, "ZINCRBY", "barcode:"+barcode, "-2", name))
+		_ = redisPool.Do(radix.Cmd(nil, "ZINCRBY", "reported:"+barcode, "1", name))
+		_ = redisPool.Do(radix.Cmd(nil, "ZINCRBY", "reports", "1", barcode+":"+name))
 		return true
 	} else {
 		return false
@@ -72,5 +74,28 @@ func addGrocyBarcodes(barcodes GrocyBarcodes, uuid string) {
 		}
 		return nil
 	}))
+}
 
+func getTotalBarcodes() int {
+	var amount int
+	_ = redisPool.Do(radix.Cmd(&amount, "EVAL", "return #redis.pcall('keys', 'barcode:*')", "0"))
+	return amount
+}
+
+func getTotalVotes() int {
+	var amount int
+	_ = redisPool.Do(radix.Cmd(&amount, "EVAL", "return #redis.pcall('keys', 'vote:*')", "0"))
+	return amount
+}
+
+func getTotalReports() int {
+	var amount int
+	_ = redisPool.Do(radix.Cmd(&amount, "EVAL", "return #redis.pcall('keys', 'report:*')", "0"))
+	return amount
+}
+
+func getReportList() []string {
+	var result []string
+	_ = redisPool.Do(radix.Cmd(&result, "ZRANGEBYSCORE", "reports", "0", "+inf", "WITHSCORES"))
+	return result
 }

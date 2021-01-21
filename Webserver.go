@@ -4,6 +4,7 @@ import (
 	"crypto/subtle"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"strconv"
@@ -27,6 +28,7 @@ func startWebserver() {
 	http.HandleFunc("/get", handleGetBarcode)
 	http.HandleFunc("/vote", handleVote)
 	http.HandleFunc("/report", handleReport)
+	http.HandleFunc("/add", handleAdd)
 	http.HandleFunc("/admin", basicAuth(handleAdmin, "Admin"))
 	fmt.Println("Starting webserver on " + globalConfig.WebserverPort)
 	log.Fatal(http.ListenAndServe(globalConfig.WebserverPort, nil))
@@ -112,6 +114,37 @@ func handleVote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+func handleAdd(w http.ResponseWriter, r *http.Request) {
+	uuid := r.Header.Get("uuid")
+	requests := logNewRequest(r)
+	if requests > globalConfig.ApiDailyCalls {
+		sendTooManyRequests(w)
+		return
+	}
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		sendBadRequest(w)
+		return
+	}
+	var barcodes GrocyBarcodes
+	err = json.Unmarshal(body, &barcodes)
+	if err != nil {
+		sendBadRequest(w)
+		return
+	}
+	if barcodes.Barcodes == nil {
+		sendBadRequest(w)
+		return
+	}
+	addGrocyBarcodes(barcodes, uuid)
+	sendGenericResultOK(w)
+	if !isValidUuid(uuid) && false { //TODO
+		sendBadRequest(w)
+		return
+	}
+}
+
 func handleReport(w http.ResponseWriter, r *http.Request) {
 	barcode := r.Header.Get("barcode")
 	uuid := r.Header.Get("uuid")
@@ -140,7 +173,7 @@ type ResponseError struct {
 }
 
 type GrocyBarcodes struct {
-	Barcodes []Barcode `json:"Barcodes"`
+	Barcodes []Barcode `json:"ServerBarcodes"`
 }
 
 type Barcode struct {
@@ -156,7 +189,16 @@ type ResponseBarcodeFound struct {
 }
 
 func handleAdmin(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Hello World!")
+	fmt.Fprintf(w, "<html><h2>BarcodeServer</h2><br>Total barcodes: "+strconv.Itoa(getTotalBarcodes())+"<br>")
+	fmt.Fprintf(w, "Total votes: "+strconv.Itoa(getTotalVotes())+"<br>")
+	fmt.Fprintf(w, "Total reports: "+strconv.Itoa(getTotalReports())+"<br><br>")
+	fmt.Fprintf(w, "<h3>Reports</h3>")
+
+	reports := getReportList()
+	length := len(reports)
+	for i := 0; i <= length-1; i = i + 2 {
+		fmt.Fprintf(w, reports[i]+" ("+reports[i+1]+") <a href='#'>Remove barcode</a> <a href='#'>Discard reports</a><br>")
+	}
 }
 
 // Clears blockedIPs array every 6 hours

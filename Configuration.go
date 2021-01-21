@@ -44,7 +44,7 @@ func generateDefaultConfig() {
 		ApiDailyCalls: 150,
 		AdminUser:     "admin",
 		AdminPassword: "admin",
-		WebserverPort: "localhost:8080",
+		WebserverPort: ":8080",
 	}
 	fmt.Println("First start, generated initial configuration")
 	saveConfig(config)
