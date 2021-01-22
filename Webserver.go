@@ -12,11 +12,16 @@ import (
 )
 
 var blockedIPs []string
+var storedBarcodes = 0
 
 /** Prevent brute force. With too many invalid password attempts, admin access is disabled*/
 var remainingLoginTries = 10
 
 func startWebserver() {
+	go updateBarcodeCount()
+	http.HandleFunc("/", handleHome)
+	http.HandleFunc("/ping", handlePing)
+	http.HandleFunc("/amount", handleAmount)
 	http.HandleFunc("/get", handleGetBarcode)
 	http.HandleFunc("/vote", handleVote)
 	http.HandleFunc("/report", handleReport)
@@ -26,9 +31,16 @@ func startWebserver() {
 	log.Fatal(http.ListenAndServe(globalConfig.WebserverPort, nil))
 }
 
+func updateBarcodeCount() {
+	for {
+		getTotalBarcodes()
+		time.Sleep(6 * time.Hour)
+	}
+}
+
 func basicAuth(handler http.HandlerFunc, realm string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ipAddr := strings.Split(r.RemoteAddr, ":")[0]
+		ipAddr := getIpAddress(r)
 		if isIPBlocked(ipAddr) {
 			sendTooManyRequests(w)
 			return
@@ -51,10 +63,10 @@ func basicAuth(handler http.HandlerFunc, realm string) http.HandlerFunc {
 			fmt.Println("Invalid login from " + ipAddr)
 			return
 		}
+		remainingLoginTries = 10
 		handler(w, r)
 	}
 }
-
 
 type ResponseError struct {
 	Result       string `json:"Result"`
@@ -76,7 +88,6 @@ type ResponseBarcodeFound struct {
 	Result     string   `json:"Result"`
 	FoundNames []string `json:"FoundNames"`
 }
-
 
 func isIPBlocked(ipAddr string) bool {
 	for _, ip := range blockedIPs {
@@ -129,4 +140,15 @@ func sendBadRequest(w http.ResponseWriter) {
 	}
 	response, _ := json.Marshal(result)
 	http.Error(w, string(response), http.StatusTooManyRequests)
+}
+
+func getIpAddress(r *http.Request) string {
+	ipAddr := strings.Split(r.RemoteAddr, ":")[0]
+	if ipAddr == "127.0.0.1" {
+		forwardedIp := strings.Split(r.Header.Get("X-FORWARDED-FOR"), ",")[0]
+		if forwardedIp != "" {
+			ipAddr = forwardedIp
+		}
+	}
+	return ipAddr
 }

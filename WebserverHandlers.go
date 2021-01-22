@@ -8,10 +8,21 @@ import (
 	"strconv"
 )
 
+func handleHome(w http.ResponseWriter, r *http.Request) {
+	http.Redirect(w, r, globalConfig.WebserverRedirect, http.StatusSeeOther)
+}
+
+func handlePing(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "pong")
+}
+func handleAmount(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, strconv.Itoa(storedBarcodes))
+}
+
 func handleGetBarcode(w http.ResponseWriter, r *http.Request) {
 	barcode := r.Header.Get("barcode")
 	uuid := r.Header.Get("uuid")
-	requests := logNewRequest(r)
+	requests := logNewRequest(r, false)
 	if requests > globalConfig.ApiDailyCalls {
 		sendTooManyRequests(w)
 		return
@@ -24,7 +35,7 @@ func handleGetBarcode(w http.ResponseWriter, r *http.Request) {
 		storedNames := getBarcode(barcode)
 		if len(storedNames) > 0 {
 			response := ResponseBarcodeFound{
-				Result:     "ok",
+				Result:     "OK",
 				FoundNames: storedNames,
 			}
 			responseString, _ := json.Marshal(response)
@@ -42,7 +53,7 @@ func handleVote(w http.ResponseWriter, r *http.Request) {
 	barcode := r.Header.Get("barcode")
 	uuid := r.Header.Get("uuid")
 	name := r.Header.Get("name")
-	requests := logNewRequest(r)
+	requests := logNewRequest(r, false)
 	if requests > globalConfig.ApiDailyCalls {
 		sendTooManyRequests(w)
 		return
@@ -62,8 +73,8 @@ func handleVote(w http.ResponseWriter, r *http.Request) {
 
 func handleAdd(w http.ResponseWriter, r *http.Request) {
 	uuid := r.Header.Get("uuid")
-	requests := logNewRequest(r)
-	if requests > globalConfig.ApiDailyCalls {
+	requests := logNewRequest(r, true)
+	if requests > globalConfig.ApiDailyCallsUpload {
 		sendTooManyRequests(w)
 		return
 	}
@@ -94,7 +105,7 @@ func handleReport(w http.ResponseWriter, r *http.Request) {
 	barcode := r.Header.Get("barcode")
 	uuid := r.Header.Get("uuid")
 	name := r.Header.Get("name")
-	requests := logNewRequest(r)
+	requests := logNewRequest(r, false)
 	if requests > globalConfig.ApiDailyCalls {
 		sendTooManyRequests(w)
 		return
@@ -113,7 +124,7 @@ func handleReport(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleAdmin(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "<html><h2>BarcodeServer</h2><br>Total barcodes: "+strconv.Itoa(getTotalBarcodes())+"<br>")
+	fmt.Fprintf(w, "<html><title>Barcode Buddy Federation Admin</title><h2>Barcode Buddy Federation Admin</h2><br>Total barcodes: "+strconv.Itoa(getTotalBarcodes())+"<br>")
 	fmt.Fprintf(w, "Unique users:: "+strconv.Itoa(len(blockedIPs))+"<br>")
 	fmt.Fprintf(w, "Blocked IPs: "+strconv.Itoa(len(blockedIPs))+"<br><br>")
 	fmt.Fprintf(w, "Total votes: "+strconv.Itoa(getTotalVotes())+"<br>")

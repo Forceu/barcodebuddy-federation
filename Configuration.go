@@ -12,12 +12,14 @@ const configFilePath = "config/config.json"
 var globalConfig Configuration
 
 type Configuration struct {
-	RedisUrl      string `json:"RedisUrl"`
-	RedisSize     int    `json:"RedisSize"`
-	ApiDailyCalls int    `json:"ApiDailyCalls"`
-	AdminUser     string `json:"AdminUser"`
-	AdminPassword string `json:"AdminPassword"`
-	WebserverPort string `json:"WebserverPort"`
+	RedisUrl            string `json:"RedisUrl"`
+	RedisSize           int    `json:"RedisSize"`
+	ApiDailyCalls       int    `json:"ApiDailyCalls"`
+	ApiDailyCallsUpload int    `json:"ApiDailyCallsUpload"`
+	AdminUser           string `json:"AdminUser"`
+	AdminPassword       string `json:"AdminPassword"`
+	WebserverPort       string `json:"WebserverPort"`
+	WebserverRedirect   string `json:"WebserverRedirect"`
 }
 
 func loadConfig() {
@@ -39,14 +41,17 @@ func loadConfig() {
 
 func generateDefaultConfig() {
 	config := Configuration{
-		RedisUrl:      "127.0.0.1:6379",
-		RedisSize:     200,
-		ApiDailyCalls: 200,
-		AdminUser:     "admin",
-		AdminPassword: "admin",
-		WebserverPort: "127.0.0.1:8080",
+		RedisUrl:            "127.0.0.1:6379",
+		RedisSize:           10,
+		ApiDailyCalls:       200,
+		ApiDailyCallsUpload: 5,
+		AdminUser:           "admin",
+		AdminPassword:       "admin",
+		WebserverPort:       "127.0.0.1:18900",
+		WebserverRedirect:   "https://github.com/Forceu/barcodebuddy",
 	}
 	fmt.Println("First start, generated initial configuration")
+	_ = os.Mkdir(configFilePath, 0700)
 	saveConfig(config)
 }
 

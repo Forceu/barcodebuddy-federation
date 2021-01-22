@@ -5,7 +5,6 @@ import (
 	"html/template"
 	"log"
 	"net/http"
-	"strings"
 )
 
 var redisPool *radix.Pool
@@ -18,11 +17,15 @@ func connectToRedis() {
 	}
 }
 
-func logNewRequest(r *http.Request) int {
-	ipAddr := strings.Split(r.RemoteAddr, ":")[0]
+func logNewRequest(r *http.Request, isUpload bool) int {
+	ipAddr := getIpAddress(r)
+	keyName := "requests:"
+	if isUpload {
+		keyName = "requests_upload:"
+	}
 	var requests int
-	_ = redisPool.Do(radix.Cmd(&requests, "INCR", "requests:"+ipAddr))
-	_ = redisPool.Do(radix.Cmd(nil, "EXPIRE", "requests:"+ipAddr, getSecondsToMidnight()))
+	_ = redisPool.Do(radix.Cmd(&requests, "INCR", keyName+ipAddr))
+	_ = redisPool.Do(radix.Cmd(nil, "EXPIRE", keyName+ipAddr, getSecondsToMidnight()))
 	return requests
 }
 
@@ -35,7 +38,7 @@ func getBarcode(barcode string) []string {
 }
 
 func voteName(barcode, name string, r *http.Request) bool {
-	ipAddr := strings.Split(r.RemoteAddr, ":")[0]
+	ipAddr := getIpAddress(r)
 	var voteCount int
 	_ = redisPool.Do(radix.Cmd(&voteCount, "INCR", "vote:"+ipAddr+":"+barcode+":"+name))
 	if voteCount != 1 {
@@ -46,7 +49,7 @@ func voteName(barcode, name string, r *http.Request) bool {
 }
 
 func reportName(barcode, name string, r *http.Request) bool {
-	ipAddr := strings.Split(r.RemoteAddr, ":")[0]
+	ipAddr := getIpAddress(r)
 	var reportCount int
 	_ = redisPool.Do(radix.Cmd(&reportCount, "INCR", "report:"+ipAddr+":"+barcode+":"+name))
 	if reportCount != 1 {
@@ -72,8 +75,10 @@ func addGrocyBarcodes(barcodes GrocyBarcodes, uuid string) {
 		for _, barcode := range barcodes.Barcodes {
 			barcodeSanitized := template.HTMLEscapeString(barcode.Barcode)
 			nameSanitized := template.HTMLEscapeString(barcode.Name)
-			_ = conn.Do(radix.FlatCmd(nil, "ZADD", "barcode:"+barcodeSanitized, "NX", "1", nameSanitized))
-			_ = conn.Do(radix.FlatCmd(nil, "SET", "log:uuid:"+barcodeSanitized+":"+nameSanitized, uuid))
+			if len(barcodeSanitized) > 4 && len(barcodeSanitized) < 30 && len(nameSanitized) > 2 && len(nameSanitized) < 50 {
+				_ = conn.Do(radix.FlatCmd(nil, "ZADD", "barcode:"+barcodeSanitized, "NX", "1", nameSanitized))
+				_ = conn.Do(radix.FlatCmd(nil, "SET", "log:uuid:"+barcodeSanitized+":"+nameSanitized, uuid))
+			}
 		}
 		return nil
 	}))
@@ -82,6 +87,7 @@ func addGrocyBarcodes(barcodes GrocyBarcodes, uuid string) {
 func getTotalBarcodes() int {
 	var amount int
 	_ = redisPool.Do(radix.Cmd(&amount, "EVAL", "return #redis.pcall('keys', 'barcode:*')", "0"))
+	storedBarcodes = amount
 	return amount
 }
 
