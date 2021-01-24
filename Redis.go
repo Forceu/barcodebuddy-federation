@@ -17,7 +17,7 @@ func connectToRedis() {
 	}
 }
 
-func logNewRequest(r *http.Request, isUpload bool) int {
+func logNewRequest(r *http.Request, uuid string, isUpload bool) int {
 	ipAddr := getIpAddress(r)
 	keyName := "requests:"
 	if isUpload {
@@ -26,14 +26,17 @@ func logNewRequest(r *http.Request, isUpload bool) int {
 	var requests int
 	_ = redisPool.Do(radix.Cmd(&requests, "INCR", keyName+ipAddr))
 	_ = redisPool.Do(radix.Cmd(nil, "EXPIRE", keyName+ipAddr, getSecondsToMidnight()))
+	_ = redisPool.Do(radix.Cmd(nil, "SADD", "users", uuid))
 	return requests
 }
 
-func getBarcode(barcode string) []string {
+func getBarcode(barcode string, increaseHit bool) []string {
 	var storedBarcodes []string
 
 	_ = redisPool.Do(radix.Cmd(&storedBarcodes, "ZREVRANGEBYSCORE", "barcode:"+barcode, "+inf", "-1"))
-	_ = redisPool.Do(radix.Cmd(nil, "ZINCRBY", "hits", "1", barcode))
+	if increaseHit {
+		_ = redisPool.Do(radix.Cmd(nil, "ZINCRBY", "hits", "1", barcode))
+	}
 	return storedBarcodes
 }
 
@@ -112,5 +115,11 @@ func getReportList() []string {
 func getMostPopularBarcodes() []string {
 	var result []string
 	_ = redisPool.Do(radix.Cmd(&result, "ZREVRANGEBYSCORE", "hits", "+inf", "1", "WITHSCORES", "LIMIT", "0", "25"))
+	return result
+}
+
+func getTotalUsers() int {
+	var result int
+	_ = redisPool.Do(radix.Cmd(&result, "SCARD", "users"))
 	return result
 }
