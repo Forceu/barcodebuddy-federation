@@ -16,8 +16,9 @@ for target in $targets; do
   fi
 
   echo "----> Building project for: $target"
-  GOOS=$os GOARCH=$arch CGO_ENABLED=0 go build -o $output > /dev/null
+  GOOS=$os GOARCH=$arch CGO_ENABLED=0 go build -o $output
   zip -j $output.zip $output > /dev/null
+  rm $output
 done
 
 echo "----> Build is complete. List of files at $release_path:"
