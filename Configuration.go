@@ -7,7 +7,8 @@ import (
 	"os"
 )
 
-const configFilePath = "config/config.json"
+const configFilePath = "config/"
+const configFile = configFilePath + "config.json"
 
 var globalConfig Configuration
 
@@ -23,10 +24,10 @@ type Configuration struct {
 }
 
 func loadConfig() {
-	if !fileExists(configFilePath) {
+	if !fileExists(configFile) {
 		generateDefaultConfig()
 	}
-	file, err := os.Open(configFilePath)
+	file, err := os.Open(configFile)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -56,7 +57,7 @@ func generateDefaultConfig() {
 }
 
 func saveConfig(config Configuration) {
-	file, err := os.OpenFile(configFilePath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	file, err := os.OpenFile(configFile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		fmt.Println("Error reading configuration:", err)
 		os.Exit(1)
