@@ -5,6 +5,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"strings"
 )
 
 var redisPool *radix.Pool
@@ -70,6 +71,20 @@ func reportName(barcode, name string, r *http.Request) bool {
 	} else {
 		return false
 	}
+}
+
+func processReport(barcodeAndName string, dismissReport bool) {
+	score := "-100"
+	if dismissReport {
+		score = "1"
+	}
+	splitArray := strings.SplitN(barcodeAndName, ":", 2)
+	barcode := splitArray[0]
+	name := splitArray[1]
+
+	_ = redisPool.Do(radix.Cmd(nil, "ZADD", "barcode:"+barcode, score, name))
+	_ = redisPool.Do(radix.Cmd(nil, "ZREM", "reported:"+barcode, name))
+	_ = redisPool.Do(radix.Cmd(nil, "ZREM", "reports", barcodeAndName))
 }
 
 func addGrocyBarcodes(barcodes GrocyBarcodes, uuid string) {

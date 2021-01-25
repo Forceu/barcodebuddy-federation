@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"strconv"
 	"strings"
@@ -58,7 +59,7 @@ func basicAuth(handler http.HandlerFunc, realm string) http.HandlerFunc {
 			[]byte(globalConfig.AdminPassword)) != 1 {
 			w.Header().Set("WWW-Authenticate", `Basic realm="`+realm+`"`)
 			w.WriteHeader(401)
-			w.Write([]byte("You are Unauthorized to access the application.\n"))
+			w.Write([]byte("You are not authorised to access the application.\n"))
 			remainingLoginTries--
 			fmt.Println("Invalid login from " + ipAddr)
 			return
@@ -143,12 +144,31 @@ func sendBadRequest(w http.ResponseWriter) {
 }
 
 func getIpAddress(r *http.Request) string {
-	ipAddr := strings.Split(r.RemoteAddr, ":")[0]
-	if ipAddr == "127.0.0.1" {
-		forwardedIp := strings.Split(r.Header.Get("X-FORWARDED-FOR"), ",")[0]
-		if forwardedIp != "" {
-			ipAddr = forwardedIp
+	//Get IP from the X-REAL-IP header
+	ip := r.Header.Get("X-REAL-IP")
+	netIP := net.ParseIP(ip)
+	if netIP != nil {
+		return ip
+	}
+
+	//Get IP from X-FORWARDED-FOR header
+	ips := r.Header.Get("X-FORWARDED-FOR")
+	splitIps := strings.Split(ips, ",")
+	for _, ip := range splitIps {
+		netIP := net.ParseIP(ip)
+		if netIP != nil {
+			return ip
 		}
 	}
-	return ipAddr
+
+	//Get IP from RemoteAddr
+	ip, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return "undefined-ip"
+	}
+	netIP = net.ParseIP(ip)
+	if netIP != nil {
+		return ip
+	}
+	return "undefined-ip"
 }
