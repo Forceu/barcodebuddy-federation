@@ -9,17 +9,21 @@ import (
 )
 
 func handleHome(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("cache-control", "public, max-age=3600")
 	http.Redirect(w, r, globalConfig.WebserverRedirect, http.StatusSeeOther)
 }
 
 func handlePing(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("cache-control", "public, max-age=60")
 	fmt.Fprintf(w, "pong")
 }
 func handleAmount(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("cache-control", "public, max-age=1800")
 	fmt.Fprintf(w, strconv.Itoa(storedBarcodes))
 }
 
 func handleGetBarcode(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("cache-control", "private")
 	barcode := r.Header.Get("barcode")
 	uuid := r.Header.Get("uuid")
 	requests := logNewRequest(r, uuid, false)
@@ -50,6 +54,7 @@ func handleGetBarcode(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleVote(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("cache-control", "private")
 	barcode := r.Header.Get("barcode")
 	uuid := r.Header.Get("uuid")
 	name := r.Header.Get("name")
@@ -72,6 +77,7 @@ func handleVote(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleAdd(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("cache-control", "private")
 	uuid := r.Header.Get("uuid")
 	requests := logNewRequest(r, uuid, true)
 	if requests > globalConfig.ApiDailyCallsUpload {
@@ -102,6 +108,7 @@ func handleAdd(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleReport(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("cache-control", "private")
 	barcode := r.Header.Get("barcode")
 	uuid := r.Header.Get("uuid")
 	name := r.Header.Get("name")
@@ -124,7 +131,7 @@ func handleReport(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleAdmin(w http.ResponseWriter, r *http.Request) {
-
+	w.Header().Set("cache-control", "private")
 	reportIdDelete, _ := r.URL.Query()["delete"]
 	reportIdDismiss, _ := r.URL.Query()["dismiss"]
 
