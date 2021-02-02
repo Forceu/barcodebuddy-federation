@@ -164,7 +164,8 @@ func handleAdmin(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Fprintf(w, "<html><style>body {padding: 15px;background-color: #222222;color: #d9d9d9;}</style><title>Barcode Buddy Federation Admin</title><h2>Barcode Buddy Federation Admin</h2><br>")
 	fmt.Fprintf(w, "Total barcodes: "+strconv.Itoa(getTotalBarcodes())+"<br>")
-	fmt.Fprintf(w, "Unique users: "+strconv.Itoa(getTotalUsers())+"<br>")
+	fmt.Fprintf(w, "Unique users: "+strconv.Itoa(getTotalUsers())+"<br><br>")
+	fmt.Fprintf(w, "RAM Usage: "+getRamUsage()+"<br>")
 	fmt.Fprintf(w, "Blocked IPs: "+strconv.Itoa(len(blockedIPs))+"<br><br>")
 	fmt.Fprintf(w, "Total votes: "+strconv.Itoa(getTotalVotes())+"<br>")
 	fmt.Fprintf(w, "Total reports: "+strconv.Itoa(getTotalReports())+"<br><br>")

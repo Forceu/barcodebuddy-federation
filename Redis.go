@@ -1,10 +1,12 @@
 package main
 
 import (
+	"fmt"
 	"github.com/mediocregopher/radix/v3"
 	"html/template"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
@@ -137,4 +139,34 @@ func getTotalUsers() int {
 	var result int
 	_ = redisPool.Do(radix.Cmd(&result, "SCARD", "users"))
 	return result
+}
+
+func getRamUsage() string {
+	var result []string
+	_ = redisPool.Do(radix.Cmd(&result, "MEMORY", "STATS"))
+	for i, item := range result {
+		if item == "total.allocated" {
+			return ByteCountSI(result[i+1])
+		}
+	}
+	return "Unknown"
+}
+
+func ByteCountSI(input string) string {
+	var b int64
+	b, err := strconv.ParseInt(input, 10, 64)
+	if err != nil {
+		return "Invalid integer"
+	}
+	const unit = 1000
+	if b < unit {
+		return fmt.Sprintf("%d B", b)
+	}
+	div, exp := int64(unit), 0
+	for n := b / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %cB",
+		float64(b)/float64(div), "kMGTPE"[exp])
 }
