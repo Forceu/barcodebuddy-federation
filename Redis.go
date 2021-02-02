@@ -1,14 +1,12 @@
 package main
 
 import (
-	"fmt"
 	"github.com/mediocregopher/radix/v3"
 	"html/template"
 	"log"
 	"net/http"
 	"strconv"
 	"strings"
-	"syscall"
 )
 
 var redisPool *radix.Pool
@@ -155,29 +153,4 @@ func getRamUsage() string {
 		}
 	}
 	return "Unknown"
-}
-
-func getRamInfo() (string, string, error) {
-	var info syscall.Sysinfo_t
-	err := syscall.Sysinfo(&info)
-	if err != nil {
-		return "", "", err
-	}
-	totalRam := info.Totalram
-	freeRam := info.Freeram
-	return ByteCountSI(totalRam), ByteCountSI(freeRam), nil
-}
-
-func ByteCountSI(b uint64) string {
-	const unit = 1024
-	if b < unit {
-		return fmt.Sprintf("%d B", b)
-	}
-	div, exp := int64(unit), 0
-	for n := b / unit; n >= unit; n /= unit {
-		div *= unit
-		exp++
-	}
-	return fmt.Sprintf("%.1f %cB",
-		float64(b)/float64(div), "kMGTPE"[exp])
 }
