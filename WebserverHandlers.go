@@ -166,6 +166,10 @@ func handleAdmin(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Total barcodes: "+strconv.Itoa(getTotalBarcodes())+"<br>")
 	fmt.Fprintf(w, "Unique users: "+strconv.Itoa(getTotalUsers())+"<br><br>")
 	fmt.Fprintf(w, "RAM Usage: "+getRamUsage()+"<br>")
+	totalRam, freeRam, err := getRamInfo()
+	if err == nil {
+		fmt.Fprintf(w, "Free RAM: "+freeRam+" of "+totalRam+"<br><br>")
+	}
 	fmt.Fprintf(w, "Blocked IPs: "+strconv.Itoa(len(blockedIPs))+"<br><br>")
 	fmt.Fprintf(w, "Total votes: "+strconv.Itoa(getTotalVotes())+"<br>")
 	fmt.Fprintf(w, "Total reports: "+strconv.Itoa(getTotalReports())+"<br><br>")

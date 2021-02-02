@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"syscall"
 )
 
 var redisPool *radix.Pool
@@ -146,19 +147,29 @@ func getRamUsage() string {
 	_ = redisPool.Do(radix.Cmd(&result, "MEMORY", "STATS"))
 	for i, item := range result {
 		if item == "total.allocated" {
-			return ByteCountSI(result[i+1])
+			totalAmount, err := strconv.ParseUint(result[i+1], 10, 64)
+			if err != nil {
+				return "Invalid Value"
+			}
+			return ByteCountSI(totalAmount)
 		}
 	}
 	return "Unknown"
 }
 
-func ByteCountSI(input string) string {
-	var b int64
-	b, err := strconv.ParseInt(input, 10, 64)
+func getRamInfo() (string, string, error) {
+	var info syscall.Sysinfo_t
+	err := syscall.Sysinfo(&info)
 	if err != nil {
-		return "Invalid integer"
+		return "", "", err
 	}
-	const unit = 1000
+	totalRam := info.Totalram
+	freeRam := info.Freeram
+	return ByteCountSI(totalRam), ByteCountSI(freeRam), nil
+}
+
+func ByteCountSI(b uint64) string {
+	const unit = 1024
 	if b < unit {
 		return fmt.Sprintf("%d B", b)
 	}
