@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -134,6 +135,12 @@ func handleAdmin(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("cache-control", "private")
 	reportIdDelete, _ := r.URL.Query()["delete"]
 	reportIdDismiss, _ := r.URL.Query()["dismiss"]
+	exportButton, _ := r.URL.Query()["export"]
+
+	if exportButton != nil {
+		serveCsv(w, r, getDownloadBarcodesAsCsv())
+		return
+	}
 
 	if reportIdDelete != nil {
 		id, err := strconv.Atoi(reportIdDelete[0])
@@ -173,6 +180,7 @@ func handleAdmin(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Blocked IPs: "+strconv.Itoa(len(blockedIPs))+"<br><br>")
 	fmt.Fprintf(w, "Total votes: "+strconv.Itoa(getTotalVotes())+"<br>")
 	fmt.Fprintf(w, "Total reports: "+strconv.Itoa(getTotalReports())+"<br><br>")
+	fmt.Fprintf(w, "<a href='/admin?export' style='color: inherit;'>Export barcodes</a><br><br>")
 	fmt.Fprintf(w, "<h3>Reports</h3>")
 
 	reports := getReportList()
@@ -202,4 +210,11 @@ func handleAdmin(w http.ResponseWriter, r *http.Request) {
 		}
 		fmt.Fprintf(w, "<br>")
 	}
+}
+
+func serveCsv(w http.ResponseWriter, r *http.Request, data [][]string) {
+	w.Header().Set("Content-Disposition", "attachment; filename=exportBarcodes.csv")
+	w.Header().Set("Content-Type", r.Header.Get("Content-Type"))
+	writer := csv.NewWriter(w)
+	_ = writer.WriteAll(data)
 }

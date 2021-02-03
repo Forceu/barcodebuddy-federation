@@ -154,3 +154,21 @@ func getRamUsage() string {
 	}
 	return "Unknown"
 }
+
+func getDownloadBarcodesAsCsv() [][]string {
+	var redisResult []string
+	var result [][]string
+
+	result = append(result, []string{"barcode", "names"})
+
+	_ = redisPool.Do(radix.Cmd(&redisResult, "EVAL", "local result = {} local matches = redis.call('KEYS', 'barcode:*') for _,key in ipairs(matches) do result[#result+1] = key local names = redis.call('ZREVRANGEBYSCORE', key, '+inf', -1) for _,keyName in ipairs(names) do result[#result+1] = keyName end end return result", "0"))
+	for _, value := range redisResult {
+		if strings.HasPrefix(value, "barcode:") {
+			result = append(result, []string{strings.Replace(value, "barcode:", "", 1)})
+		} else {
+			lastIndex := len(result) - 1
+			result[lastIndex] = append(result[lastIndex], value)
+		}
+	}
+	return result
+}
