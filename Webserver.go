@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 )
 
@@ -172,18 +171,6 @@ func getIpAddress(r *http.Request) string {
 		return ip
 	}
 	return "undefined-ip"
-}
-
-
-func getRamInfo() (string, string, error) {
-	var info syscall.Sysinfo_t
-	err := syscall.Sysinfo(&info)
-	if err != nil {
-		return "", "", err
-	}
-	totalRam := info.Totalram
-	freeRam := info.Freeram
-	return ByteCountSI(totalRam), ByteCountSI(freeRam), nil
 }
 
 func ByteCountSI(b uint64) string {
