@@ -61,7 +61,7 @@ func reportName(barcode, name string, r *http.Request) bool {
 		return false
 	}
 
-	//Checking score first, if "" is returned the item does not exist and would be created by ZINCRBY
+	// Checking score first, if "" is returned the item does not exist and would be created by ZINCRBY
 	var score string
 	_ = redisPool.Do(radix.Cmd(&score, "ZSCORE", "barcode:"+barcode, name))
 	if score != "" {
@@ -96,7 +96,7 @@ func addGrocyBarcodes(barcodes GrocyBarcodes, uuid string) {
 			nameSanitized := template.HTMLEscapeString(barcode.Name)
 			if len(barcodeSanitized) > 4 && len(barcodeSanitized) < 30 && len(nameSanitized) > 2 && len(nameSanitized) < 50 {
 				_ = conn.Do(radix.FlatCmd(nil, "ZADD", "barcode:"+barcodeSanitized, "NX", "1", nameSanitized))
-				_ = conn.Do(radix.FlatCmd(nil, "SET", "log:uuid:"+barcodeSanitized+":"+nameSanitized, uuid, "EX", "345600")) //4 days
+				_ = conn.Do(radix.FlatCmd(nil, "SET", "log:uuid:"+barcodeSanitized+":"+nameSanitized, uuid, "EX", "345600")) // 4 days
 			}
 		}
 		return nil

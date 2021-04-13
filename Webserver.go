@@ -29,7 +29,12 @@ func startWebserver() {
 	http.HandleFunc("/add", handleAdd)
 	http.HandleFunc("/admin", basicAuth(handleAdmin, "Admin"))
 	fmt.Println("Starting webserver on " + globalConfig.WebserverPort)
-	log.Fatal(http.ListenAndServe(globalConfig.WebserverPort, nil))
+	srv := &http.Server{
+		Addr:         globalConfig.WebserverPort,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
+	}
+	log.Fatal(srv.ListenAndServe())
 }
 
 func updateBarcodeCount() {
@@ -144,7 +149,7 @@ func sendBadRequest(w http.ResponseWriter) {
 }
 
 func getIpAddress(r *http.Request) string {
-	//Get IP from X-FORWARDED-FOR header
+	// Get IP from X-FORWARDED-FOR header
 	ips := r.Header.Get("X-FORWARDED-FOR")
 	splitIps := strings.Split(ips, ",")
 	for _, ip := range splitIps {
@@ -154,14 +159,14 @@ func getIpAddress(r *http.Request) string {
 		}
 	}
 
-	//Get IP from the X-REAL-IP header
+	// Get IP from the X-REAL-IP header
 	ip := r.Header.Get("X-REAL-IP")
 	netIP := net.ParseIP(ip)
 	if netIP != nil {
 		return ip
 	}
 
-	//Get IP from RemoteAddr
+	// Get IP from RemoteAddr
 	ip, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		return "undefined-ip"
