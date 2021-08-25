@@ -26,4 +26,4 @@ An admin overview is available at `localhost:18900/admin`.
 
 ## License
 
-This project is licensed under the GNU GPL3 - see the [LICENSE.md](LICENSE.md) file for details
+This project is licensed under the AGPL3 - see the [LICENSE.md](LICENSE.md) file for details
