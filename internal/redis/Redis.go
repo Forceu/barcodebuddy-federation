@@ -86,18 +86,18 @@ func ReportName(barcode, name string, r *http.Request) bool {
 	}
 }
 
-func ProcessReport(barcodeAndName string, dismissReport bool) {
+func ProcessReport(report Report, dismissReport bool) {
 	score := "-100"
 	if dismissReport {
 		score = "1"
 	}
-	splitArray := strings.SplitN(barcodeAndName, ":", 2)
+	splitArray := strings.SplitN(report.BarcodeAndName, ":", 2)
 	barcode := splitArray[0]
 	name := splitArray[1]
 
 	_ = redisPool.Do(radix.Cmd(nil, "ZADD", "barcode:"+barcode, score, name))
 	_ = redisPool.Do(radix.Cmd(nil, "ZREM", "reported:"+barcode, name))
-	_ = redisPool.Do(radix.Cmd(nil, "ZREM", "reports", barcodeAndName))
+	_ = redisPool.Do(radix.Cmd(nil, "ZREM", "reports", report.BarcodeAndName))
 }
 
 func AddGrocyBarcodes(barcodes GrocyBarcodes, uuid string) {
@@ -134,16 +134,61 @@ func GetTotalReports() int {
 	return amount
 }
 
-func GetReportList() []string {
-	var result []string
-	_ = redisPool.Do(radix.Cmd(&result, "ZREVRANGEBYSCORE", "reports", "+inf", "0", "WITHSCORES"))
+func GetReportList() []Report {
+	var reports []string
+	var result []Report
+	_ = redisPool.Do(radix.Cmd(&reports, "ZREVRANGEBYSCORE", "reports", "+inf", "0", "WITHSCORES"))
+	length := len(reports)
+	for i := 0; i <= length-1; i = i + 2 {
+		result = append(result, Report{
+			Id:             i,
+			BarcodeAndName: reports[i],
+			ReportCount:    reports[i+1],
+		})
+	}
 	return result
 }
 
-func GetMostPopularBarcodes() []string {
-	var result []string
-	_ = redisPool.Do(radix.Cmd(&result, "ZREVRANGEBYSCORE", "hits", "+inf", "1", "WITHSCORES", "LIMIT", "0", "50"))
+type Report struct {
+	Id             int
+	BarcodeAndName string
+	ReportCount    string
+}
+
+func GetMostPopularBarcodes() []TopBarcode {
+	var barcodes []string
+	var result []TopBarcode
+	_ = redisPool.Do(radix.Cmd(&barcodes, "ZREVRANGEBYSCORE", "hits", "+inf", "1", "WITHSCORES", "LIMIT", "0", "50"))
+	length := len(barcodes)
+	for i := 0; i <= length-1; i = i + 2 {
+		barcode := TopBarcode{
+			Barcode: barcodes[i],
+			Hits:    barcodes[i+1],
+		}
+		appendNamesToTopBarcode(&barcode)
+		result = append(result, barcode)
+	}
 	return result
+}
+
+func appendNamesToTopBarcode(barcode *TopBarcode) {
+	var result string
+	names := GetBarcode(barcode.Barcode, false)
+	if len(names) > 0 {
+		for i, name := range names {
+			result = result + " " + name
+			if i < len(names)-1 {
+				result = result + ","
+			}
+		}
+	}
+	barcode.Names = result
+}
+
+type TopBarcode struct {
+	Barcode string
+	Hits    string
+	Names   string
 }
 
 func GetTotalUsers() int {

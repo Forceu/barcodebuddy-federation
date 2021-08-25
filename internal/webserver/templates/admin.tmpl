@@ -1,0 +1,28 @@
+{{define "admin"}}
+<html>
+   <style>body {padding: 15px;background-color: #222222;color: #d9d9d9;}</style>
+   <title>Barcode Buddy Federation Admin</title>
+   <h2>Barcode Buddy Federation Admin</h2>
+   <br>
+   Total barcodes: {{.TotalBarcodes}}<br>
+   Unique users: {{.Users}}<br><br>
+   RAM Usage: {{.RamUsage}}<br>
+{{ if ne .FreeRam "" }}
+   {{.FreeRam}}<br>
+{{end}}
+   <br>
+   Total votes: {{.TotalVotes}}<br>
+   Total reports: {{.TotalReports}}<br><br>
+   <a href='/admin?export' style='color: inherit;'>Export barcodes</a><br><br>
+   <h3>Reports</h3>
+{{ range .Reports }}
+	{{.BarcodeAndName}} ({{.ReportCount}})&nbsp;&nbsp;&nbsp;
+	<a href='./admin?delete={{.Id}}' style='color: inherit;'>Remove barcode</a>&nbsp;&nbsp;<a href='./admin?dismiss={{.Id}}' style='color: inherit;'>Dismiss reports</a><br>
+{{end}}
+   <br>
+   <h4>Top 50 barcodes</h4><br>
+{{ range .TopBarcodes }}
+	{{.Barcode}} ({{.Hits}}): {{.Names}}<br>
+{{end}}
+</html>
+{{end}}

@@ -4,12 +4,15 @@ import (
 	"BarcodeServer/internal/configuration"
 	"BarcodeServer/internal/helper"
 	"BarcodeServer/internal/redis"
+	sessionmanager "BarcodeServer/internal/webserver/sessions"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 func handleHome(w http.ResponseWriter, r *http.Request) {
@@ -134,8 +137,50 @@ func handleReport(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func handleLogout(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("cache-control", "private")
+	sessionmanager.LogoutSession(w, r)
+	redirect(w, r, "login")
+}
+func handleLogin(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("cache-control", "private")
+	err := r.ParseForm()
+	if err != nil {
+		log.Panicln(err)
+		return
+	}
+	username := r.Form.Get("username")
+	password := r.Form.Get("password")
+	isInvalidLogin := false
+
+	if username != "" && password != "" {
+		if helper.SecureStringEqual(username, configuration.Get().AdminUser) && helper.SecureStringEqual(password, configuration.Get().AdminPassword) {
+			sessionmanager.CreateSession(w, nil)
+			redirect(w, r, "admin")
+			return
+		} else {
+			time.Sleep(2 * time.Second)
+			isInvalidLogin = true
+		}
+	}
+	err = templateFolder.ExecuteTemplate(w, "login", loginVariables{IsFailedLogin: isInvalidLogin, User: username})
+	if err != nil {
+		log.Panicln(err)
+	}
+}
+
+type loginVariables struct {
+	IsFailedLogin bool
+	User          string
+}
+
 func handleAdmin(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("cache-control", "private")
+	if !sessionmanager.IsValidSession(w, r) {
+		time.Sleep(1 * time.Second)
+		redirect(w, r, "login")
+		return
+	}
 	reportIdDelete, _ := r.URL.Query()["delete"]
 	reportIdDismiss, _ := r.URL.Query()["dismiss"]
 	exportButton, _ := r.URL.Query()["export"]
@@ -149,10 +194,12 @@ func handleAdmin(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.Atoi(reportIdDelete[0])
 		if err == nil {
 			reports := redis.GetReportList()
-			if id >= 0 && id < len(reports) {
-				redis.ProcessReport(reports[id], false)
-				http.Redirect(w, r, "/admin", http.StatusTemporaryRedirect)
-				return
+			for _, report := range reports {
+				if report.Id == id {
+					redis.ProcessReport(report, false)
+					redirect(w, r, "admin")
+					return
+				}
 			}
 		} else {
 			fmt.Println("Invalid ID for report provided.")
@@ -162,57 +209,48 @@ func handleAdmin(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.Atoi(reportIdDismiss[0])
 		if err == nil {
 			reports := redis.GetReportList()
-			if id >= 0 && id < len(reports) {
-				redis.ProcessReport(reports[id], true)
-				http.Redirect(w, r, "/admin", http.StatusTemporaryRedirect)
-				return
+			for _, report := range reports {
+				if report.Id == id {
+					redis.ProcessReport(report, true)
+					redirect(w, r, "admin")
+					return
+				}
 			}
 		} else {
 			fmt.Println("Invalid ID for report provided.")
 		}
 	}
 
-	fmt.Fprintf(w, "<html><style>body {padding: 15px;background-color: #222222;color: #d9d9d9;}</style><title>Barcode Buddy Federation Admin</title><h2>Barcode Buddy Federation Admin</h2><br>")
-	fmt.Fprintf(w, "Total barcodes: "+strconv.Itoa(redis.GetTotalBarcodes())+"<br>")
-	fmt.Fprintf(w, "Unique users: "+strconv.Itoa(redis.GetTotalUsers())+"<br><br>")
-	fmt.Fprintf(w, "RAM Usage: "+redis.GetRamUsage()+"<br>")
+	view := adminView{
+		TotalBarcodes: redis.GetTotalBarcodes(),
+		Users:         redis.GetTotalUsers(),
+		RamUsage:      redis.GetRamUsage(),
+		TotalVotes:    redis.GetTotalVotes(),
+		TotalReports:  redis.GetTotalReports(),
+		Reports:       redis.GetReportList(),
+		TopBarcodes:   redis.GetMostPopularBarcodes(),
+	}
+
 	totalRam, freeRam, err := helper.GetRamInfo()
 	if err == nil {
-		fmt.Fprintf(w, "Free RAM: "+freeRam+" of "+totalRam+"<br><br>")
+		view.FreeRam = "Free RAM: " + freeRam + " of " + totalRam
 	}
-	fmt.Fprintf(w, "Blocked IPs: "+strconv.Itoa(len(blockedIPs))+"<br><br>")
-	fmt.Fprintf(w, "Total votes: "+strconv.Itoa(redis.GetTotalVotes())+"<br>")
-	fmt.Fprintf(w, "Total reports: "+strconv.Itoa(redis.GetTotalReports())+"<br><br>")
-	fmt.Fprintf(w, "<a href='/admin?export' style='color: inherit;'>Export barcodes</a><br><br>")
-	fmt.Fprintf(w, "<h3>Reports</h3>")
-
-	reports := redis.GetReportList()
-	length := len(reports)
-	for i := 0; i <= length-1; i = i + 2 {
-		fmt.Fprintf(w, reports[i]+" ("+reports[i+1]+") &nbsp;&nbsp;&nbsp;<a href='/admin?delete="+
-			strconv.Itoa(i)+"' style='color: inherit;'>Remove barcode</a>&nbsp;&nbsp;<a href='/admin?dismiss="+
-			strconv.Itoa(i)+"' style='color: inherit;'>Dismiss reports</a><br>")
+	err = templateFolder.ExecuteTemplate(w, "admin", view)
+	if err != nil {
+		log.Panicln(err)
 	}
 
-	fmt.Fprintf(w, "<br><h4>Top 50 barcodes</h4><br>")
+}
 
-	topBarcodes := redis.GetMostPopularBarcodes()
-	length = len(topBarcodes)
-	for i := 0; i <= length-1; i = i + 2 {
-		barcode := topBarcodes[i]
-		hits := topBarcodes[i+1]
-		names := redis.GetBarcode(barcode, false)
-		fmt.Fprintf(w, barcode+" ("+hits+"):")
-		if len(names) > 0 {
-			for j, name := range names {
-				fmt.Fprintf(w, " "+name)
-				if j < len(names)-1 {
-					fmt.Fprintf(w, ",")
-				}
-			}
-		}
-		fmt.Fprintf(w, "<br>")
-	}
+type adminView struct {
+	TotalBarcodes int
+	Users         int
+	RamUsage      string
+	FreeRam       string
+	TotalVotes    int
+	TotalReports  int
+	Reports       []redis.Report
+	TopBarcodes   []redis.TopBarcode
 }
 
 func serveCsv(w http.ResponseWriter, r *http.Request, data [][]string) {

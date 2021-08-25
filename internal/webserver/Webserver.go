@@ -2,22 +2,25 @@ package webserver
 
 import (
 	"BarcodeServer/internal/configuration"
-	"BarcodeServer/internal/helper"
 	"BarcodeServer/internal/redis"
-	"crypto/subtle"
+	"embed"
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"log"
 	"net/http"
 	"time"
 )
 
-var blockedIPs []string
+// templateFolderEmbedded is the embedded version of the "templates" folder
+//go:embed templates
+var templateFolderEmbedded embed.FS
 
-/** Prevent brute force. With too many invalid password attempts, admin access is disabled*/
-var remainingLoginTries = 10
+// Variable containing all parsed templates
+var templateFolder *template.Template
 
 func Start() {
+	initTemplates()
 	go updateBarcodeCount()
 	http.HandleFunc("/", handleHome)
 	http.HandleFunc("/ping", handlePing)
@@ -26,7 +29,9 @@ func Start() {
 	http.HandleFunc("/vote", handleVote)
 	http.HandleFunc("/report", handleReport)
 	http.HandleFunc("/add", handleAdd)
-	http.HandleFunc("/admin", basicAuth(handleAdmin, "Admin"))
+	http.HandleFunc("/login", handleLogin)
+	http.HandleFunc("/logout", handleLogout)
+	http.HandleFunc("/admin", handleAdmin)
 	fmt.Println("Starting webserver on " + configuration.Get().WebserverPort)
 	srv := &http.Server{
 		Addr:         configuration.Get().WebserverPort,
@@ -36,40 +41,19 @@ func Start() {
 	log.Fatal(srv.ListenAndServe())
 }
 
+// Initialises the templateFolder variable by scanning through all the templates.
+func initTemplates() {
+	var err error
+	templateFolder, err = template.ParseFS(templateFolderEmbedded, "templates/*.tmpl")
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
 func updateBarcodeCount() {
 	for {
 		redis.GetTotalBarcodes()
 		time.Sleep(6 * time.Hour)
-	}
-}
-
-func basicAuth(handler http.HandlerFunc, realm string) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ipAddr := helper.GetIpAddress(r)
-		if isIPBlocked(ipAddr) {
-			sendTooManyRequests(w)
-			return
-		}
-		if remainingLoginTries < 1 {
-			sendTooManyRequests(w)
-			blockedIPs = append(blockedIPs, ipAddr)
-			fmt.Println("Blocked IP " + ipAddr)
-			remainingLoginTries = 10
-			return
-		}
-		user, pass, ok := r.BasicAuth()
-		if !ok || subtle.ConstantTimeCompare([]byte(user),
-			[]byte(configuration.Get().AdminUser)) != 1 || subtle.ConstantTimeCompare([]byte(pass),
-			[]byte(configuration.Get().AdminPassword)) != 1 {
-			w.Header().Set("WWW-Authenticate", `Basic realm="`+realm+`"`)
-			w.WriteHeader(401)
-			w.Write([]byte("You are not authorised to access the application.\n"))
-			remainingLoginTries--
-			fmt.Println("Invalid login from " + ipAddr)
-			return
-		}
-		remainingLoginTries = 10
-		handler(w, r)
 	}
 }
 
@@ -83,15 +67,6 @@ const GENERIC_RESPONSE_OK = "{\"Result\":\"ok\"}"
 type ResponseBarcodeFound struct {
 	Result     string   `json:"Result"`
 	FoundNames []string `json:"FoundNames"`
-}
-
-func isIPBlocked(ipAddr string) bool {
-	for _, ip := range blockedIPs {
-		if ip == ipAddr {
-			return true
-		}
-	}
-	return false
 }
 
 func isValidUuid(uuid string) bool {
@@ -131,4 +106,9 @@ func sendBadRequest(w http.ResponseWriter) {
 	}
 	response, _ := json.Marshal(result)
 	http.Error(w, string(response), http.StatusTooManyRequests)
+}
+
+// Sends a redirect HTTP output to the client. Variable url is used to redirect to ./url
+func redirect(w http.ResponseWriter, r *http.Request, url string) {
+	http.Redirect(w, r, "./"+url, http.StatusTemporaryRedirect)
 }
