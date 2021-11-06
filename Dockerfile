@@ -13,7 +13,7 @@ RUN mkdir /compile
   
 COPY . /compile  
 
-RUN cd /compile  && CGO_ENABLED=0 go build -o /compile/BarcodeServer
+RUN cd /compile  && CGO_ENABLED=0 go build -o /compile/BarcodeServer BarcodeServer/cmd/barcodeserver
 
 FROM alpine:3.13
 
