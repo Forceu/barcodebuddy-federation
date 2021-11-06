@@ -14,7 +14,7 @@ A redis instance and ideally a reverse proxy for SSL.
 
 ## Installing
 
-Download the appropiate release binary to start the server. Alternatively you can build it from source by cloning this repository and running `go build`.
+Download the appropiate release binary to start the server. Alternatively you can build it from source by cloning this repository and running `go build BarcodeServer/cmd/barcodeserver`.
 
 ## Usage
 
