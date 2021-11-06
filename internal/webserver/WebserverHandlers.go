@@ -33,13 +33,13 @@ func handleGetBarcode(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("cache-control", "private")
 	barcode := r.Header.Get("barcode")
 	uuid := r.Header.Get("uuid")
+	if !isValidUuid(uuid) {
+		sendBadRequest(w)
+		return
+	}
 	requests := redis.LogNewRequest(r, uuid, false)
 	if requests > configuration.Get().ApiDailyCalls {
 		sendTooManyRequests(w)
-		return
-	}
-	if !isValidUuid(uuid) {
-		sendBadRequest(w)
 		return
 	}
 	if len(barcode) > 4 {
@@ -65,13 +65,13 @@ func handleVote(w http.ResponseWriter, r *http.Request) {
 	barcode := r.Header.Get("barcode")
 	uuid := r.Header.Get("uuid")
 	name := r.Header.Get("name")
+	if !isValidUuid(uuid) {
+		sendBadRequest(w)
+		return
+	}
 	requests := redis.LogNewRequest(r, uuid, false)
 	if requests > configuration.Get().ApiDailyCalls {
 		sendTooManyRequests(w)
-		return
-	}
-	if !isValidUuid(uuid) {
-		sendBadRequest(w)
 		return
 	}
 	if len(barcode) > 4 && len(name) > 1 {
@@ -87,12 +87,12 @@ func handleAdd(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("cache-control", "private")
 	uuid := r.Header.Get("uuid")
 	requests := redis.LogNewRequest(r, uuid, true)
-	if requests > configuration.Get().ApiDailyCallsUpload {
-		sendTooManyRequests(w)
-		return
-	}
 	if !isValidUuid(uuid) {
 		sendBadRequest(w)
+		return
+	}
+	if requests > configuration.Get().ApiDailyCallsUpload {
+		sendTooManyRequests(w)
 		return
 	}
 	body, err := ioutil.ReadAll(r.Body)
@@ -119,13 +119,13 @@ func handleReport(w http.ResponseWriter, r *http.Request) {
 	barcode := r.Header.Get("barcode")
 	uuid := r.Header.Get("uuid")
 	name := r.Header.Get("name")
+	if !isValidUuid(uuid) {
+		sendBadRequest(w)
+		return
+	}
 	requests := redis.LogNewRequest(r, uuid, false)
 	if requests > configuration.Get().ApiDailyCalls {
 		sendTooManyRequests(w)
-		return
-	}
-	if !isValidUuid(uuid) {
-		sendBadRequest(w)
 		return
 	}
 	if len(barcode) > 4 && len(name) > 1 {
@@ -224,6 +224,7 @@ func handleAdmin(w http.ResponseWriter, r *http.Request) {
 	view := adminView{
 		TotalBarcodes: redis.GetTotalBarcodes(),
 		Users:         redis.GetTotalUsers(),
+		UsersActive:   redis.GetTotalActiveUsers(),
 		RamUsage:      redis.GetRamUsage(),
 		TotalVotes:    redis.GetTotalVotes(),
 		TotalReports:  redis.GetTotalReports(),
@@ -245,10 +246,11 @@ func handleAdmin(w http.ResponseWriter, r *http.Request) {
 type adminView struct {
 	TotalBarcodes int
 	Users         int
-	RamUsage      string
-	FreeRam       string
+	UsersActive   int
 	TotalVotes    int
 	TotalReports  int
+	RamUsage      string
+	FreeRam       string
 	Reports       []redis.Report
 	TopBarcodes   []redis.TopBarcode
 }

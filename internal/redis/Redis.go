@@ -14,6 +14,10 @@ import (
 var redisPool *radix.Pool
 var AmountStoredBarcodes int
 
+// TimespanActiveUser is the time in seconds in which the user must have sent
+// a request in order to count as being active. Default is 30 days (2592000s)
+const TimespanActiveUser = "2592000"
+
 type GrocyBarcodes struct {
 	Barcodes []Barcode `json:"ServerBarcodes"`
 }
@@ -41,6 +45,7 @@ func LogNewRequest(r *http.Request, uuid string, isUpload bool) int {
 	_ = redisPool.Do(radix.Cmd(&requests, "INCR", keyName+ipAddr))
 	_ = redisPool.Do(radix.Cmd(nil, "EXPIRE", keyName+ipAddr, helper.GetSecondsToMidnight()))
 	_ = redisPool.Do(radix.Cmd(nil, "SADD", "users", uuid))
+	_ = redisPool.Do(radix.Cmd(nil, "SET", "users:active:"+uuid, "1", "EX", TimespanActiveUser))
 	return requests
 }
 
@@ -125,6 +130,12 @@ func GetTotalBarcodes() int {
 func GetTotalVotes() int {
 	var amount int
 	_ = redisPool.Do(radix.Cmd(&amount, "EVAL", "return #redis.pcall('keys', 'vote:*')", "0"))
+	return amount
+}
+
+func GetTotalActiveUsers() int {
+	var amount int
+	_ = redisPool.Do(radix.Cmd(&amount, "EVAL", "return #redis.pcall('keys', 'users:active:*')", "0"))
 	return amount
 }
 

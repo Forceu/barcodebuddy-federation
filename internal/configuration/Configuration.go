@@ -19,15 +19,15 @@ var sessionMutex sync.Mutex
 const currentConfigVersion = 2
 
 type Configuration struct {
-	RedisUrl            string                    `json:"RedisUrl"`
 	RedisSize           int                       `json:"RedisSize"`
 	ApiDailyCalls       int                       `json:"ApiDailyCalls"`
 	ApiDailyCallsUpload int                       `json:"ApiDailyCallsUpload"`
+	ConfigVersion       int                       `json:"ConfigVersion"`
+	RedisUrl            string                    `json:"RedisUrl"`
 	AdminUser           string                    `json:"AdminUser"`
 	AdminPassword       string                    `json:"AdminPassword"`
 	WebserverPort       string                    `json:"WebserverPort"`
 	WebserverRedirect   string                    `json:"WebserverRedirect"`
-	ConfigVersion       int                       `json:"ConfigVersion"`
 	Sessions            map[string]models.Session `json:"Sessions"`
 }
 
