@@ -16,7 +16,7 @@ const configFile = configFilePath + "config.json"
 var config Configuration
 var sessionMutex sync.Mutex
 
-const currentConfigVersion = 2
+const currentConfigVersion = 3
 
 type Configuration struct {
 	RedisSize           int                       `json:"RedisSize"`
@@ -28,6 +28,7 @@ type Configuration struct {
 	AdminPassword       string                    `json:"AdminPassword"`
 	WebserverPort       string                    `json:"WebserverPort"`
 	WebserverRedirect   string                    `json:"WebserverRedirect"`
+	ApiKeyEdeka         string                    `json:"ApiKeyEdeka"`
 	Sessions            map[string]models.Session `json:"Sessions"`
 }
 
