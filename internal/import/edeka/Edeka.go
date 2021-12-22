@@ -82,7 +82,7 @@ func getBarcodesFromApi(apikey string) (error, []edekaItem) {
 
 func StartPeriodicSync(apikey string) {
 	RunImport(apikey)
-	time.Sleep(24 + time.Hour)
+	time.Sleep(24 * time.Hour)
 	go StartPeriodicSync(apikey)
 }
 
