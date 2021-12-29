@@ -14,13 +14,9 @@ import (
 const importUrl = "https://gc-lb.heig.net/eanexport?key="
 
 type edekaItem struct {
-	Brand    string `json:"brand"`
-	Name     string `json:"name"`
-	Barcodes []ean  `json:"EAN"`
-}
-
-type ean struct {
-	Barcode string `json:"EAN"`
+	Brand    string     `json:"brand"`
+	Name     string     `json:"name"`
+	Barcodes [][]string `json:"EAN"`
 }
 
 func itemsToBarcodes(response []edekaItem) redis.GrocyBarcodes {
@@ -34,9 +30,9 @@ func itemsToBarcodes(response []edekaItem) redis.GrocyBarcodes {
 		}
 		// It would save resources to create a slice with the length determined, for better
 		// readability and robustness append has been used instead however
-		for _, barcode := range product.Barcodes {
+		for _, barcode := range product.Barcodes[0] {
 			result = append(result, redis.Barcode{
-				Barcode: barcode.Barcode,
+				Barcode: barcode,
 				Name:    name,
 			})
 		}
@@ -95,7 +91,7 @@ func RunImport(apikey string) {
 		log.Println("Unable to sync Edeka barcodes: " + err.Error())
 		return
 	}
-	log.Println("Edeka Import: Total products: " + strconv.Itoa(len(response)))
+	log.Println("Edeka Import: Total products " + strconv.Itoa(len(response)))
 	barcodes := itemsToBarcodes(response)
 	log.Println("Edeka Import: Total barcodes " + strconv.Itoa(len(barcodes.Barcodes)))
 	redis.AddGrocyBarcodes(barcodes, "edeka")
