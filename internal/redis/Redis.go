@@ -111,13 +111,19 @@ func AddGrocyBarcodes(barcodes GrocyBarcodes, uuid string) {
 		for _, barcode := range barcodes.Barcodes {
 			barcodeSanitized := template.HTMLEscapeString(barcode.Barcode)
 			nameSanitized := template.HTMLEscapeString(barcode.Name)
-			if len(barcodeSanitized) > 4 && len(barcodeSanitized) < 30 && len(nameSanitized) > 2 && len(nameSanitized) < 50 {
+
+			if len(barcodeSanitized) > 4 && len(barcodeSanitized) < 30 && isNumeric(barcodeSanitized) && len(nameSanitized) > 2 && len(nameSanitized) < 90 {
 				_ = conn.Do(radix.FlatCmd(nil, "ZADD", "barcode:"+barcodeSanitized, "NX", "1", nameSanitized))
 				_ = conn.Do(radix.FlatCmd(nil, "SET", "log:uuid:"+barcodeSanitized+":"+nameSanitized, uuid, "EX", "345600")) // 4 days
 			}
 		}
 		return nil
 	}))
+}
+
+func isNumeric(input string) bool {
+	_, err := strconv.ParseInt(input, 10, 64)
+	return err == nil
 }
 
 func GetTotalBarcodes() int {
