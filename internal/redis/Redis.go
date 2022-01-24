@@ -109,8 +109,8 @@ func AddGrocyBarcodes(barcodes GrocyBarcodes, uuid string) {
 	key := "grocyBarcodes"
 	_ = redisPool.Do(radix.WithConn(key, func(conn radix.Conn) error {
 		for _, barcode := range barcodes.Barcodes {
-			barcodeSanitized := template.HTMLEscapeString(barcode.Barcode)
-			nameSanitized := template.HTMLEscapeString(barcode.Name)
+			barcodeSanitized := template.HTMLEscapeString(strings.TrimSpace(barcode.Barcode))
+			nameSanitized := template.HTMLEscapeString(strings.TrimSpace(barcode.Name))
 
 			if len(barcodeSanitized) > 4 && len(barcodeSanitized) < 30 && isNumeric(barcodeSanitized) && len(nameSanitized) > 2 && len(nameSanitized) < 90 {
 				_ = conn.Do(radix.FlatCmd(nil, "ZADD", "barcode:"+barcodeSanitized, "NX", "1", nameSanitized))
