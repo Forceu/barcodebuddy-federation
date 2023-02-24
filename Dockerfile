@@ -1,4 +1,4 @@
-FROM golang:1.16 AS build_base
+FROM golang:1.20 AS build_base
 
 ## !! NOT for production use !!
 ## 

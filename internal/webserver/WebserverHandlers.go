@@ -22,10 +22,12 @@ func handleHome(w http.ResponseWriter, r *http.Request) {
 
 func handlePing(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("cache-control", "public, max-age=60")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	fmt.Fprintf(w, "pong")
 }
 func handleAmount(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("cache-control", "public, max-age=1800")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	fmt.Fprintf(w, strconv.Itoa(redis.AmountStoredBarcodes))
 }
 
