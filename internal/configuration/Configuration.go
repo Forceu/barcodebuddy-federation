@@ -29,7 +29,7 @@ type Configuration struct {
 	WebserverPort       string                    `json:"WebserverPort"`
 	WebserverRedirect   string                    `json:"WebserverRedirect"`
 	ApiKeyEdeka         string                    `json:"ApiKeyEdeka"`
-	Sessions            map[string]models.Session `json:"Sessions"`
+	Sessions            map[string]models.Session `json:"-"`
 }
 
 func Load() {
@@ -47,6 +47,7 @@ func Load() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	config.Sessions = make(map[string]models.Session)
 	if config.ConfigVersion < currentConfigVersion {
 		upgrade()
 	}

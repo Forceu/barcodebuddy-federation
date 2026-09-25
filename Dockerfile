@@ -1,9 +1,6 @@
-FROM golang:1.20 AS build_base
+FROM golang:1.27 AS build_base
 
-## !! NOT for production use !!
-## 
-## Creates a docker image with Federation and Redis for TESTING purposes
-## For production use a compiled version as a standalone app.
+## Creates a docker image with Federation. Requires a redis server connection
 ##
 ## Usage:
 ## docker build . -t federation
@@ -15,16 +12,15 @@ COPY . /compile
 
 RUN cd /compile  && CGO_ENABLED=0 go build -o /compile/BarcodeServer BarcodeServer/cmd/barcodeserver
 
-FROM alpine:3.13
+FROM alpine:3.24
 
 
 RUN apk add ca-certificates redis && \
-   mkdir /app && \
-   echo "redis-server --daemonize yes && /app/FederationServer" > /app/start.sh && \
-   chmod +x /app/start.sh
+   mkdir /app
   
 COPY --from=build_base /compile/BarcodeServer /app/FederationServer
 
-CMD ["sh","/app/start.sh"]
+WORKDIR /app/
+CMD ["/app/FederationServer"]
 
 
